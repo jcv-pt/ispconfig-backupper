@@ -1,0 +1,4 @@
+*.pyc
+*tester.file
+data/logs/*.log
+data/config/default.ini
