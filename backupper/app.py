@@ -1,6 +1,8 @@
 import os
 import argparse
+import time
 
+from datetime import datetime
 from log.logger import Logger
 from config.config import Config
 from mysql.mysql import Mysql
@@ -10,6 +12,7 @@ from filesystem.file import File
 from server.server import Server
 from storage.storage import Storage
 from zip.zip import Zip
+from utils.utils import Utils
 
 class App:
 
@@ -26,15 +29,17 @@ class App:
 		# Initialize app var
 	
 		self.app = {
+			'rid' : datetime.today().strftime('%Y-%m-%d_%H%M%S'),
+			'stime' : time.time(),
 			'path' : os.path.abspath(os.getcwd()),
 			'verbose' : bool(self.args.verbose)
 		}
 		
-		# Initialize config
+		# Initialize logger & config
 		
-		self.logger = Logger(self.app['path'] + '/data/logs/', self.app['verbose'])
+		self.logger = Logger(self.app['path'] + '/data/logs/', self.app['rid'], self.app['verbose'])
 		self.config = Config(self.app['path'] + '/data/config/default.ini')
-	
+
 		# Initialize libs - MYSQL
 		
 		mysql = Mysql(self.config)
@@ -68,11 +73,19 @@ class App:
 		
 		# Lookup clients, and process backups
 		
-		self.mysql.execute("SELECT client.client_id, sys_group.groupid FROM client INNER JOIN sys_group ON sys_group.client_id = client.client_id order by client.client_id ASC")
+		conditions = ""
+		
+		if self.config.get('Archive','SkipClientIds') is not None:
+			conditions = "AND client.client_id NOT IN (" + self.config.get('Archive','SkipClientIds') + ")"
+		
+		self.mysql.execute("SELECT client.client_id, sys_group.groupid FROM client INNER JOIN sys_group ON sys_group.client_id = client.client_id WHERE 1 " + conditions + " ORDER by client.client_id ASC")
 
 		lookup = self.mysql.fetchall()
 		
-		self.logger.info('global', str(len(lookup)) + ' clients found, starting backup routines...')
+		if len(lookup) > 0:
+			self.logger.info('global', str(len(lookup)) + ' clients found, starting backup routines...')
+		else:
+			self.logger.info('global', 'No clients found!')
 
 		for client in lookup:
 		
@@ -87,11 +100,15 @@ class App:
 			# Backup mail accounts
 			
 			self.processMailAccounts(client);
-			
+		
+		#Report
+		
+		self.logger.info('global', 'Process completed in ' + Utils.secondsToHours(time.time() - self.app['stime']))
+		
 		# Cleanup
 		
 		self.logger.purge(self.config.get('Logs','MaxFilesCount'))
-			
+		
 		# Exit
 
 		if self.logger.hasErrors() is True:
@@ -102,8 +119,17 @@ class App:
 	def processDomainFiles(self, client):
 	
 		#Lookup client domains
-	
-		self.mysql.execute("SELECT * FROM web_domain WHERE sys_groupid = " + str(client['groupid']))
+		
+		conditions = ""
+		
+		if self.config.get('Archive','SkipDomainIds') is not None:
+			conditions += "AND web_domain.domain_id NOT IN (" + self.config.get('Archive','SkipDomainIds') + ") "
+			
+		if self.config.get('Archive','SkipDomainNames') is not None:
+			domains = self.config.get('Archive','SkipDomainNames').split(',')
+			conditions += "AND web_domain.domain NOT IN (" + Utils.arrayToQuotes(domains) + ") "
+
+		self.mysql.execute("SELECT * FROM web_domain WHERE sys_groupid = " + str(client['groupid']) + " " + conditions)
 
 		lookup = self.mysql.fetchall()
 	
@@ -115,7 +141,7 @@ class App:
 			
 			# Create archive
 			
-			archiveFile = File(self.workingDir.getPath() + 'client_' + str(client['client_id']) + '_domain_' + str(domain['domain_id']) + '_'  + str(domain['domain']) + '.zip')
+			archiveFile = File(self.workingDir.getPath() + self.app['rid'] + '_client_' + str(client['client_id']) + '_domain_' + str(domain['domain_id']) + '_'  + str(domain['domain']) + '.zip')
 
 			archiveZip = Zip(archiveFile.getPath());
 			
@@ -153,7 +179,7 @@ class App:
 	
 			# Compile client database file
 			
-			databaseFile = File(self.workingDir.getPath() + 'client_' + str(client['client_id']) + '_database_' + database['database_name'] + '.sql')
+			databaseFile = File(self.workingDir.getPath() + self.app['rid'] + '_client_' + str(client['client_id']) + '_database_' + database['database_name'] + '.sql')
 			
 			# Create sql export
 			
@@ -181,8 +207,15 @@ class App:
 	def processMailAccounts(self, client):
 	
 		#Lookup client domains
+		
+		conditions = ""
+			
+		if self.config.get('Archive','SkipDomainNames') is not None:
+			domains = self.config.get('Archive','SkipDomainNames').split(',')
+			for domain in domains:
+				conditions += "AND email NOT LIKE '%@" + domain + "' "
 	
-		self.mysql.execute("SELECT email, maildir FROM mail_user WHERE sys_groupid = " + str(client['groupid']) + " ORDER BY email")
+		self.mysql.execute("SELECT email, maildir FROM mail_user WHERE sys_groupid = " + str(client['groupid']) + " " + conditions + " ORDER BY email")
 
 		lookup = self.mysql.fetchall()
 	
@@ -190,7 +223,7 @@ class App:
 		
 			# Create archive
 			
-			archiveFile = File(self.workingDir.getPath() + 'client_' + str(client['client_id']) + '_email_' + email['email'] + '.zip')
+			archiveFile = File(self.workingDir.getPath() + self.app['rid'] + '_client_' + str(client['client_id']) + '_email_' + email['email'] + '.zip')
 
 			archiveZip = Zip(archiveFile.getPath());
 			

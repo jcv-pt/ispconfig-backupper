@@ -4,11 +4,11 @@ from datetime import datetime
 
 class Logger:
 
-	def __init__(self, path, verbose = False):
+	def __init__(self, path, rid, verbose = False):
 	
 		self.path = Dir(path)
 		self.verbose = verbose
-		self.unid = datetime.today().strftime('%Y-%m-%d_%H%M%S')
+		self.rid = rid
 		self.hasError = False
 		
 		#Init dir
@@ -23,7 +23,7 @@ class Logger:
 		if self.verbose:
 			print(log)
 			
-		f = open(self.path.getPath() + 'Log_' +  self.unid + '.log' , 'a')
+		f = open(self.path.getPath() + 'Log_' +  self.rid + '.log' , 'a')
 		f.write(log + "\n")
 		f.close()
 		
@@ -42,7 +42,7 @@ class Logger:
 	def purge(self, maxFilesCount):
 	
 		logs = sorted(self.path.list())
-	
-		for filename in logs[:(maxFilesCount*-1)]:
+
+		for filename in logs[:(int(maxFilesCount)*-1)]:
 			log = File(self.path.getPath()+filename)
 			log.delete();
