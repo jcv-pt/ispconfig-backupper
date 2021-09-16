@@ -1,0 +1,6 @@
+###### Requirements without Version Specifiers ######`
+
+
+###### Requirements with Version Specifiers ######`
+mysql-connector-python ~= 8.0.0			# Recommended be version 8.0
+boto3 ~= 1.17.0          				# Recommended be version 1.17

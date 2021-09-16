@@ -7,8 +7,7 @@ Backupper is a Python library to backup ISPConfig client data to remote web stor
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install Backupper required libs.
 
 ```bash
-pip install mysql-connector-python
-pip install boto3
+pip install -r requirements.txt
 ```
 
 Copy & edit the config smaple file located at:
