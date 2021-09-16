@@ -31,6 +31,7 @@ class App:
 		self.app = {
 			'rid' : datetime.today().strftime('%Y-%m-%d_%H%M%S'),
 			'stime' : time.time(),
+			'sdate' : datetime.today().strftime('%Y-%m-%d'),
 			'path' : os.path.abspath(os.getcwd()),
 			'verbose' : bool(self.args.verbose)
 		}
@@ -157,7 +158,7 @@ class App:
 			
 			self.logger.info('database', 'Uploading file ' + archiveFile.getName() + ' to storage..')
 			
-			status = self.storage.upload(archiveFile);
+			status = self.storage.upload(archiveFile, self.app['sdate']);
 			
 			if status is False:
 				self.logger.error('domain',self.storage.getMessage())
@@ -195,7 +196,7 @@ class App:
 			
 			self.logger.info('database', 'Uploading file ' + databaseFile.getName() + ' to storage...')
 			
-			status = self.storage.upload(databaseFile);
+			status = self.storage.upload(databaseFile, self.app['sdate']);
 			
 			if status is False:
 				self.logger.error('domain',self.storage.getMessage())
@@ -239,7 +240,7 @@ class App:
 			
 			self.logger.info('email', 'Uploading file ' + archiveFile.getName() + ' to storage...')
 			
-			status = self.storage.upload(archiveFile);
+			status = self.storage.upload(archiveFile, self.app['sdate']);
 			
 			if status is False:
 				self.logger.error('domain',self.storage.getMessage())

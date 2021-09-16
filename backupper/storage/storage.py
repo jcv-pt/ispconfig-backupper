@@ -28,11 +28,19 @@ class Storage:
 	
 		return self.client
 		
-	def upload(self, file, fileName = None):
-
-		# If S3 object_name was not specified, use file_name
-		if fileName is None:
-			fileName = file.getName()
+	def upload(self, file, fileFolder = None, fileName = None):
+	
+		filePath = "";
+		
+		# Set file folder
+		if fileFolder is not None:
+			filePath += fileFolder + '/'
+			
+		# Set file name
+		if fileName is not None:
+			filePath += fileName
+		else:
+			filePath += file.getName()
 
 		# Upload the file
 		try:
@@ -44,7 +52,7 @@ class Storage:
 				callback = Progress(file)
 				
 			# Upload 
-			response = self.client.upload_file(file.getPath(), self.config.get('Storage','Path'), fileName, Callback=callback)
+			response = self.client.upload_file(file.getPath(), self.config.get('Storage','Path'), filePath, Callback=callback)
 			
 		except Exception as e:
 			self.error = e
